@@ -1,0 +1,24 @@
+LifeStream - Instant Photo Sharing
+Copyright (C) 2014 Kayateia
+
+Please see the GPLv3 under notes for license info.
+
+-----
+
+Setting up your own LifeStream instance:
+
+- Provide a debug signing key.
+- Edit the sources and replace things in <>. Specifically the GCM IDs and
+  stuff in Settings.java.
+- Edit config.php in the server code to put in your GCM app key and other
+  such things.
+- Create the database using schema.sql.
+- You need a PHP server that has Curl support.
+- You have to set up the photo paths on the server writable by the web
+  server, and you have to insert user info manually right now. Passwords
+  are SHA hashed.
+- If you want to use a private self-signed SSL key, look in utils to build
+  a custom keystore (and enable it in the code).
+
+Eventually I would like to make these things more graceful so that one
+copy of the app is able to connect to different people's servers.

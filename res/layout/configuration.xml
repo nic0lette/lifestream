@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
+
+	<LinearLayout
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="vertical" >
+	
+		<LinearLayout
+		    android:id="@+id/loginForm"
+		    android:layout_width="match_parent"
+		    android:layout_height="wrap_content"
+		    android:orientation="vertical" >
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="@string/config_username"
+		        android:textAppearance="?android:attr/textAppearanceMedium" />
+		
+		    <EditText
+		        android:id="@+id/username"
+		        android:layout_width="match_parent"
+		        android:layout_height="wrap_content"
+		        android:ems="10"
+		        android:inputType="textEmailAddress" >
+		
+		        <requestFocus />
+		    </EditText>
+		
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="@string/config_password"
+		        android:textAppearance="?android:attr/textAppearanceMedium" />
+		
+		    <EditText
+		        android:id="@+id/password"
+		        android:layout_width="match_parent"
+		        android:layout_height="wrap_content"
+		        android:ems="10"
+		        android:inputType="textPassword" />
+
+		    <Space
+		        android:layout_width="match_parent"
+		        android:layout_height="wrap_content" />
+		
+		    <Button
+		        android:id="@+id/btnLogin"
+		        android:layout_width="match_parent"
+		        android:layout_height="wrap_content"
+		        android:text="@string/config_login" />
+		</LinearLayout>
+	
+	    <TextView
+	        android:id="@+id/loggedin"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:textAppearance="?android:attr/textAppearanceMedium" />
+	
+	    <CheckBox
+	        android:id="@+id/cbEnabled"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_enabled" />
+	
+	    <CheckBox
+	        android:id="@+id/cbUploadNotifications"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_upload_notifications" />
+	
+	    <CheckBox
+	        android:id="@+id/cbVerboseNotifications"
+	        android:layout_width="301dp"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_verbose" />
+	
+	    <CheckBox
+	        android:id="@+id/cbVibration"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_vibration" />
+	
+	    <CheckBox
+	        android:id="@+id/cbHighQualityImage"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_hq_image" />
+	
+	    <TextView
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/config_image_size"
+	        android:textAppearance="?android:attr/textAppearanceMedium" />
+	
+	    <EditText
+	        android:id="@+id/maxImageSize"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:ems="8"
+	        android:inputType="number" />
+	
+	    <Button
+	        android:id="@+id/btnPathEditor"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_marginTop="10dp"
+	        android:text="@string/config_edit_paths" />
+	</LinearLayout>
+</ScrollView>
