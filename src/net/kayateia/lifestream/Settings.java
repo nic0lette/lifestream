@@ -50,7 +50,7 @@ public class Settings {
 	public static final String LAST_IMAGE_TIMESTAMP = "lastImageTimestamp";
     
 	// Default time, in seconds, to set the "last timestamp" if none exists
-	public static final long DEFAULT_DURATION = 14 * 24 * 60 * 60;
+	public static final long DEFAULT_DURATION = 1 * 24 * 60 * 60;
 
 	public static final String BASE_URL = "<LifeStream Base URL>";
 
