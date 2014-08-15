@@ -108,6 +108,15 @@ public class CaptureService extends Service {
 			return;
 		}
 
+		// If we're disabled or the config is empty, we can't even try to do anything anyway.
+		Settings settings = new Settings(getBaseContext());
+		String username = settings.getUserName();
+		String authToken = settings.getAuthToken();
+		if (username.isEmpty() || authToken.isEmpty() || !settings.getEnabled()) {
+			Log.i(LOG_TAG, "Config is not set or not enabled: not doing anything.");
+			return;
+		}
+
 		ProcessedImages db = ProcessedImages.GetSingleton(getBaseContext());
 
 		// We have to hold a wake lock here, or the user may lock the
