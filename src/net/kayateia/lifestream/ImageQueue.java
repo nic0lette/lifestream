@@ -121,14 +121,14 @@ public class ImageQueue extends SQLiteOpenHelper {
 
 	// Returns a set of image specs that need processing. They will not be
 	// removed from the queue until markProcessed() has been called on each.
-	public Image[] getItemsToProcess(int maxCount) {
+	public Image[] getItemsToProcess() {
 		SQLiteDatabase db = null;
 		try {
 			db = this.getReadableDatabase();
 			Cursor cursor = db.query(TABLE_QUEUE,
 				new String[] { KEY_ID, KEY_NAME, KEY_TIMESTAMP, KEY_QUEUESTAMP },
 				null, null,
-				null, null, KEY_QUEUESTAMP, "" + maxCount);
+				null, null, KEY_QUEUESTAMP);
 			if (!cursor.moveToFirst())
 				return null;
 

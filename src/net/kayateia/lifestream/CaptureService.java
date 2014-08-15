@@ -53,7 +53,6 @@ public class CaptureService extends Service {
 	private static final String LOG_TAG = "LifeStream/CaptureService";
 	private static final int NOTIFY_ID = 77;
 	private static final int WAKELOCK_TIMEOUT = 30000;
-	private static final int MAX_PROCESS = 10;
 	private static final int THUMBNAIL_SIZE = 200;
 
 	public static final String UPLOAD_DIRECTORY_NAME = Media.BASE_DIR + "/upload";
@@ -150,7 +149,7 @@ public class CaptureService extends Service {
 		final ImageQueue queue = ImageQueue.GetSingleton(this);
 
 		// Check to see if we actually have anything to get.
-		final ImageQueue.Image[] images = queue.getItemsToProcess(MAX_PROCESS);
+		final ImageQueue.Image[] images = queue.getItemsToProcess();
 		if (images == null || images.length == 0)
 			return true;
 
@@ -196,12 +195,6 @@ public class CaptureService extends Service {
 		if (didAny) {
 			// Kick the streaming service to do the uploading work.
 			UploadService.Kick(getBaseContext());
-		}
-
-		if (images.length == MAX_PROCESS) {
-			// If there were more images than we processed (probably), kick us again. This
-			// will give another service a chance.
-			CaptureService.Kick(this);
 		}
 	}
 
