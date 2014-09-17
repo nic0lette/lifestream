@@ -20,30 +20,18 @@
 package net.kayateia.lifestream;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Date;
-import java.util.HashMap;
 
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.database.ContentObserver;
-import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
-import android.media.ExifInterface;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.PowerManager;
-import android.provider.MediaStore;
-import android.provider.MediaStore.MediaColumns;
 import android.util.Log;
 
 /**
@@ -58,7 +46,7 @@ public class CaptureService extends Service {
 	public static final String UPLOAD_DIRECTORY_NAME = Media.BASE_DIR + "/upload";
 	public static final String TEMP_EXTENSION = ".temp";
 
-	private File _storagePath, _baseStoragePath;
+	private File _storagePath;
 
 	// Manually kicks the capture service from elsewhere.
 	static public void Kick(Context context) {
@@ -88,7 +76,6 @@ public class CaptureService extends Service {
 
 	private boolean initStorage() {
 		try {
-			_baseStoragePath = Media.GetBaseStorage(this);
 			_storagePath = Media.InitStorage(getBaseContext(), UPLOAD_DIRECTORY_NAME, true);
 		} catch (Exception e) {
 			final Resources res = getResources();
@@ -109,15 +96,13 @@ public class CaptureService extends Service {
 		}
 
 		// If we're disabled or the config is empty, we can't even try to do anything anyway.
-		Settings settings = new Settings(getBaseContext());
-		String username = settings.getUserName();
-		String authToken = settings.getAuthToken();
+		final Settings settings = LifeStreamApplication.GetApp().GetSettings();
+		final String username = settings.getUserName();
+		final String authToken = settings.getAuthToken();
 		if (username.isEmpty() || authToken.isEmpty() || !settings.getEnabled()) {
 			Log.i(LOG_TAG, "Config is not set or not enabled: not doing anything.");
 			return;
 		}
-
-		ProcessedImages db = ProcessedImages.GetSingleton(getBaseContext());
 
 		// We have to hold a wake lock here, or the user may lock the
 		// phone right after a picture, preventing us from even determining
@@ -136,13 +121,12 @@ public class CaptureService extends Service {
 		try {
 			// If we somehow don't release it within the timeout, do it anyway.
 			Log.v(LOG_TAG, "Acquire wakelock");
-			if (wl != null)
-				wl.acquire(WAKELOCK_TIMEOUT);
+			wl.acquire(WAKELOCK_TIMEOUT);
 			needRelease = onCheckInner(wl);
 		} finally {
 			if (needRelease) {
 				Log.v(LOG_TAG, "Release wakelock by default");
-				if (wl != null && wl.isHeld())
+				if (wl.isHeld())
 					wl.release();
 			}
 		}
@@ -184,21 +168,24 @@ public class CaptureService extends Service {
 		ProcessedImages processed = ProcessedImages.GetSingleton(this);
 
 		boolean didAny = false;
-		for (int i=0; i<images.length; ++i) {
+		for (final ImageQueue.Image image : images) {
 			// Build the paths
-			final File source = new File(images[i].pathname);
+			final File source = new File(image.pathname);
 			final File destination = new File(_storagePath.getAbsolutePath().concat(File.separator).concat(source.getName()).concat(TEMP_EXTENSION));
 
-			ScaleResult result = scaleOne(source, destination, images[i].timestamp);
+			ScaleResult result = scaleOne(source, destination, image.timestamp);
 			if (result.scaleSucceeded) {
-				queue.markProcessed(images[i].id);
+				queue.markProcessed(image.id);
 
 				// Add it to the database of things we've already processed.
-				processed.addProcessed(source, result.thumbnail);
+				processed.addProcessed(source, result.image.getThumbnail());
+
+				// Free the memory we're using
+				result.image.recycle();
 
 				didAny = true;
 			} else
-				queue.markSkipped(images[i].id);
+				queue.markSkipped(image.id);
 		}
 
 		if (didAny) {
@@ -220,10 +207,10 @@ public class CaptureService extends Service {
 			return rv;
 		}
 
-		static public ScaleResult Success(Bitmap thumbnail) {
+		static public ScaleResult Success(LifeStreamImage image) {
 			ScaleResult rv = new ScaleResult();
 			rv.scaleSucceeded = true;
-			rv.thumbnail = thumbnail;
+			rv.image = image;
 			return rv;
 		}
 
@@ -231,7 +218,7 @@ public class CaptureService extends Service {
 		public boolean scaleSucceeded;
 
 		// Thumbnail of the scaled image, if applicable.
-		public Bitmap thumbnail;
+		public LifeStreamImage image;
 	}
 
 	// Returns a thumbnail if we successfully scaled the image and submitted it for upload, or null otherwise.
@@ -239,15 +226,6 @@ public class CaptureService extends Service {
 		// Only copy if the destination doesn't already exist
 		if (destination.exists())
 			return ScaleResult.Success();
-
-		// Retrieve our auth token and user parameters. If they're not there, we can't do anything.
-		Settings settings = new Settings(getBaseContext());
-		String username = settings.getUserName();
-		String authToken = settings.getAuthToken();
-		if (username.isEmpty() || authToken.isEmpty() || !settings.getEnabled()) {
-			Log.i(LOG_TAG, "Not copying " + source.getAbsolutePath() + ": Config is not set or disabled");
-			return ScaleResult.Fail();
-		}
 
 		// Get any "extras".
 		WatchedPaths watched = new WatchedPaths(new Settings(this));
@@ -264,143 +242,54 @@ public class CaptureService extends Service {
 
 		Log.i(LOG_TAG, "Scale image from " + source.getAbsolutePath() + " to " + destination.getAbsolutePath());
 
-		FileInputStream sourceStream = null;
-		Bitmap image = null, thumbnail = null;
+		// Give it a few moments to "settle".. sometimes it seems to give us the
+		// notification before the image is actually finished writing or something.
+		// FIXME: This hack shouldn't be necessary anymore when we split the media
+		// observation from the photo capturing properly.
 		try {
-			// Give it a few moments to "settle".. sometimes it seems to give us the
-			// notification before the image is actually finished writing or something.
-			// FIXME: This hack shouldn't be necessary anymore when we split the media
-			// observation from the photo capturing properly.
-			try {
-				int now = (int)(new Date().getTime() / 1000);
-				int diff = now - timestamp;
-				if (diff < 5)
-					Thread.sleep((5 - diff) * 1000);
-			} catch (Exception exc) {
-				// We don't really care if we're interrupted.
+			int now = (int)(new Date().getTime() / 1000);
+			int diff = now - timestamp;
+			if (diff < 5)
+				Thread.sleep((5 - diff) * 1000);
+		} catch (Exception exc) {
+			// We don't really care if we're interrupted.
+		}
+
+		final Settings settings = LifeStreamApplication.GetApp().GetSettings();
+		final int scaleSize = settings.getImageSize();
+		final boolean hqScale = settings.getHighQualityScale();
+		final LifeStreamImage image = new LifeStreamImage(source, scaleSize, THUMBNAIL_SIZE, hqScale);
+
+		// Success?
+		if (image.getScaledImage() == null || image.getThumbnail() == null) {
+			if (settings.getVerbose()) {
+				final Resources res = getResources();
+				notifyError(res.getString(R.string.fail_ticker), res.getString(R.string.fail_title), res.getString(R.string.fail_copy));
 			}
+			Log.w(LOG_TAG, "Copy failed: " + source);
+			return ScaleResult.Fail();
+		}
 
-			// Read the image and scale it. Because loading the raw pixels is somewhat
-			// likely to OOM us (or make it more likely, anyway) what we really want to do
-			// here is to have the bitmap loader do the scaling for us.
-
-			// Open once to get the image size.
-			sourceStream = new FileInputStream(source);
-			BitmapFactory.Options opts = new BitmapFactory.Options();
-			opts.inJustDecodeBounds = true;
-			BitmapFactory.decodeStream(sourceStream, null, opts);
-			sourceStream.close();
-
-			// Also verify the orientation; Samsung phones like to set the EXIF flag
-			// instead of rotating the pixels.
-			ExifInterface exif = new ExifInterface(source.getAbsolutePath());
-			int orientation = exif.getAttributeInt(
-					ExifInterface.TAG_ORIENTATION,
-					ExifInterface.ORIENTATION_NORMAL);
-			int rotate = 0;
-			switch (orientation) {
-			case ExifInterface.ORIENTATION_ROTATE_270:
-				rotate = 270;
-				break;
-			case ExifInterface.ORIENTATION_ROTATE_180:
-				rotate = 180;
-				break;
-			case ExifInterface.ORIENTATION_ROTATE_90:
-				rotate = 90;
-				break;
-			}
-
-			// This is the size we want to scale to. The largest dimension should not exceed this.
-			final int largestSize = settings.getImageSize();
-			if (settings.getHighQualityScale()) {
-				// Figure out the target size.
-				int width = -1, height = -1;
-				if (opts.outWidth > largestSize || opts.outHeight > largestSize) {
-					if (opts.outWidth > opts.outHeight) {
-						width = largestSize;
-						height = opts.outHeight * width / opts.outWidth;
-					} else {
-						height = largestSize;
-						width = opts.outWidth * height / opts.outHeight;
-					}
-				}
-
-				// This takes more RAM but it gives us more control over the size and a better quality scale.
-				sourceStream = new FileInputStream(source);
-				image = BitmapFactory.decodeStream(sourceStream, null, null);
-				if (!checkImageLoad(source, image, "Image load failed: "))
-					return ScaleResult.Fail();
-				if (width != -1 && height != -1) {
-					image = Bitmap.createScaledBitmap(image, width, height, true);
-					if (!checkImageLoad(source, image, "Image scale failed: "))
-						return ScaleResult.Fail();
-				}
-			} else {
-				// Lower quality scale. This basically discards pixels while it's loading. It's much
-				// cheaper in both RAM and CPU, but it has limitations about what sizes you can do,
-				// and it's lower quality.
-				int scale = 1;
-				while ((opts.outWidth/scale) > largestSize || (opts.outHeight/scale) > largestSize)
-					scale *= 2;
-
-				// Re-open the file and scale it as we read it.
-				sourceStream = new FileInputStream(source);
-				opts = new BitmapFactory.Options();
-				opts.inSampleSize = scale;
-				image = BitmapFactory.decodeStream(sourceStream, null, opts);
-				if (!checkImageLoad(source, image, "Image load failed: "))
-					return ScaleResult.Fail();
-			}
-
-			// Do rotation if needed.
-			if (rotate != 0) {
-				Log.i(LOG_TAG, source.getAbsolutePath() + ": rotation by " + rotate);
-				Matrix matrix = new Matrix();
-				matrix.preRotate(rotate);
-				image = Bitmap.createBitmap(image, 0, 0, image.getWidth(), image.getHeight(), matrix, true);
-			}
-			if (!checkImageLoad(source, image, "Image rotate failed: "))
-				return ScaleResult.Fail();
-
-			// Re-compress the data back into a JPEG in its new home.
+		// Re-compress the data back into a JPEG in its new home.
+		try {
 			final FileOutputStream destStream = new FileOutputStream(destination);
-			image.compress(Bitmap.CompressFormat.JPEG, 70, destStream);
+			image.getScaledImage().compress(Bitmap.CompressFormat.JPEG, 70, destStream);
 			destStream.close();
-
-			// Scale again to get a small thumbnail.
-			if (opts.outWidth > THUMBNAIL_SIZE || opts.outHeight > THUMBNAIL_SIZE) {
-				if (opts.outWidth > opts.outHeight)
-					thumbnail = Bitmap.createScaledBitmap(image, THUMBNAIL_SIZE, opts.outHeight * THUMBNAIL_SIZE / opts.outWidth, true);
-				else
-					thumbnail = Bitmap.createScaledBitmap(image, opts.outWidth * THUMBNAIL_SIZE / opts.outHeight, THUMBNAIL_SIZE, true);
-			}
-		} catch (final FileNotFoundException ex) {
+		} catch (final IOException e) {
 			if (settings.getVerbose()) {
 				final Resources res = getResources();
 				notifyError(res.getString(R.string.fail_ticker), res.getString(R.string.fail_title), res.getString(R.string.fail_copy));
 			}
-			Log.w(LOG_TAG, "Copy failed", ex);
-		} catch (final IOException ex) {
-			if (settings.getVerbose()) {
-				final Resources res = getResources();
-				notifyError(res.getString(R.string.fail_ticker), res.getString(R.string.fail_title), res.getString(R.string.fail_copy));
-			}
-			Log.w(LOG_TAG, "Copy failed", ex);
-		} finally {
-			if (sourceStream != null) {
-				try {
-					sourceStream.close();
-				} catch (IOException e) {
-				}
-			}
-			if (image != null)
-				image.recycle();
+			Log.w(LOG_TAG, "Failed to write scaled image: " + destination, e);
+			return ScaleResult.Fail();
 		}
 
 		// Remove the temp suffix so that it can actually be processed.
 		String destName = destination.getAbsolutePath();
 		String finalName = destName.substring(0, destName.length() - TEMP_EXTENSION.length());
-		destination.renameTo(new File(finalName));
+		if (!destination.renameTo(new File(finalName))) {
+			Log.w(LOG_TAG, String.format("Failed to rename image: %s -> %s", destination, finalName));
+		}
 
 		// Copy any extra files as well.
 		if (extras.length > 0) {
@@ -410,16 +299,7 @@ public class CaptureService extends Service {
 			}
 		}
 
-		return ScaleResult.Success(thumbnail);
-	}
-
-	boolean checkImageLoad(File source, Bitmap image, String message) {
-		if (image == null) {
-			final Resources res = getResources();
-			notifyError(res.getString(R.string.fail_ticker), res.getString(R.string.fail_title), res.getString(R.string.fail_image_load, source.getName()));
-			Log.e(LOG_TAG, message + source.getAbsolutePath());
-			return false;
-		} else
-			return true;
+		// Yay! It worked!
+		return ScaleResult.Success(image);
 	}
 }

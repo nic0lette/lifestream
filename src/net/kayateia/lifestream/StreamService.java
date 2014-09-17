@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,8 +45,9 @@ import android.util.Log;
 public class StreamService extends Service {
 	private static final String LOG_TAG = "LifeStream/StreamService";
 	private static final String DIRECTORY_NAME = Media.BASE_DIR;
+	private static final long WAKELOCK_TIMEOUT = TimeUnit.MINUTES.toMillis(1);
 	private static final int NOTIFY_ID = 78;
-	private static final int WAKELOCK_TIMEOUT = 60000;
+
 	private File _storagePath;
 	private static final String USERDIR_PREFIX = "Lifestream_";
 
@@ -166,7 +168,11 @@ public class StreamService extends Service {
 
 			String notificationMsg = res.getString(R.string.download_detail);
 
-			String baseUrl = Settings.GetBaseUrl();
+			final LifeStreamApplication app = (LifeStreamApplication) getApplication();
+			if (app == null) {
+				throw new IllegalStateException("getApplication returned a null context");
+			}
+			String baseUrl = app.GetSettings().GetBaseUrl();
 			URL url = new URL(baseUrl + "check-images.php");
 			String result = HttpMultipartUpload.DownloadString(url, params, this);
 			String[] users, files, paths;

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- Update with your GCM ID -->
+    <string name="gcm_id">0</string>
+
+	<!-- Update with your server URL (with trailing '/' !) -->
+    <string name="base_url">http://your.server.here/path/</string>
+</resources>

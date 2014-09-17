@@ -132,7 +132,12 @@ public class UploadService extends Service {
 				HashMap<String, String> params = new HashMap<String, String>();
 				params.put("auth", authToken);
 
-				String baseUrl = Settings.GetBaseUrl();
+				final LifeStreamApplication app = (LifeStreamApplication) getApplication();
+				if (app == null) {
+					throw new IllegalStateException("getApplication returned a null context");
+				}
+				final String baseUrl = app.GetSettings().GetBaseUrl();
+
 				String result = HttpMultipartUpload.Upload(new URL(baseUrl + "upload.php"),
 					f,
 					"uploadedfile", params, getBaseContext());

@@ -21,6 +21,7 @@ package net.kayateia.lifestream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +31,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.widget.CursorAdapter;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,11 +45,11 @@ public class TabRecentImages extends Fragment {
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		super.onCreateView(inflater, container, savedInstanceState);
-		_view = inflater.inflate(R.layout.recent_history, container, false);
+		final View _view = inflater.inflate(R.layout.recent_history, container, false);
 
 		ProcessedImages images = ProcessedImages.GetSingleton(getActivity());
 		final Cursor cursor = images.getCursorOfAll();
-		if (cursor == null)
+		if (cursor == null || _view == null)
 			return _view;
 
 		// getActivity().startManagingCursor(cursor);
@@ -55,12 +57,13 @@ public class TabRecentImages extends Fragment {
 		list.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> arg0, View v, int position, long arg3) {
 				cursor.moveToPosition(position);
-				String fullName = cursor.getString(cursor.getColumnIndex(ProcessedImages.KEY_FULLNAME));
-				if (fullName != null) {
+				final String fullName = cursor.getString(cursor.getColumnIndex(ProcessedImages.KEY_FULLNAME));
+				final Activity activity = getActivity();
+				if (fullName != null && activity != null) {
 					Intent intent = new Intent();
 					intent.setAction(Intent.ACTION_VIEW);
 					intent.setDataAndType(Uri.parse("file://" + fullName), "image/*");
-					getActivity().startActivity(intent);
+					activity.startActivity(intent);
 				}
 			}
 		});
@@ -101,6 +104,4 @@ public class TabRecentImages extends Fragment {
 			return v;
 		}
 	}
-
-	View _view;
 }

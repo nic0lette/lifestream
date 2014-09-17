@@ -36,7 +36,12 @@ public class Network {
 	static final String LOG_TAG = "LifeStream/Login";
 
 	static public synchronized String DoLogin(Context context, String userText, String passText) {
-		Settings settings = new Settings(context);
+		final LifeStreamApplication app = (LifeStreamApplication) context.getApplicationContext();
+		if (app == null) {
+			// This shouldn't actually ever be able to happen
+			throw new IllegalStateException("DoLogin with a null application context");
+		}
+		final Settings settings = app.GetSettings();
 
 		// See if we have a GCM ID first.
 		String gcmId = settings.getGcmId();
@@ -44,7 +49,7 @@ public class Network {
 			gcmId = GCMRegistrar.getRegistrationId(context);
 		if (gcmId.equals("")) {
 			// Request one. We'll pick up its contents and re-register later.
-			GCMRegistrar.register(context, GCMIntentService.GCM_SENDER_ID);
+			GCMRegistrar.register(context, context.getString(R.string.gcm_id));
 		} else {
 			String oldId = settings.getGcmId();
 			if (!oldId.equals("") && !gcmId.equals(oldId)) {
@@ -57,7 +62,7 @@ public class Network {
 		// Do we have an auth ID?
 		String authId = settings.getAuthToken();
 		if (authId.equals("")) {
-			authId = userText + "+" + Settings.GetAndroidID(context);
+			authId = userText + "+" + settings.GetAndroidID(context);
 		}
 
 		// Now contact the LifeStream server.
@@ -68,9 +73,8 @@ public class Network {
 		parameters.put("auth", authId);
 		String resultText = "";
 		try {
-			String baseUrl = Settings.GetBaseUrl();
 			resultText = HttpMultipartUpload.DownloadString(
-				new URL(baseUrl + "login.php"),
+				new URL(settings.GetBaseUrl() + "login.php"),
 				parameters, context);
 
 			// Crack the JSON. If we can't parse it, we fail below. If we

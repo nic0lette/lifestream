@@ -113,7 +113,7 @@ public class ProcessedImages extends SQLiteOpenHelper {
 		SQLiteDatabase db = null;
 		try {
 			db = this.getReadableDatabase();
-			Cursor cursor = db.rawQuery(
+			return db.rawQuery(
 				"select " + KEY_ID + " as _id,"
 					+ KEY_NAME + ","
 					+ KEY_TIMESTAMP + ","
@@ -122,7 +122,6 @@ public class ProcessedImages extends SQLiteOpenHelper {
 					+
 				"from " + TABLE_PROCESSED + " " +
 				"order by " + KEY_TIMESTAMP + " desc", null);
-			return cursor;
 		} catch (SQLiteException e) {
 			Log.e(LOG_TAG, "SQL exception during getCursorOfAll", e);
 			if (db != null)

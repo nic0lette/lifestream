@@ -44,24 +44,25 @@ public class Settings {
 	public static final String PREFS_VERBOSE = "verbose";
 	public static final String PREFS_UPLOAD_NOTIFICATIONS = "uploadNotifications";
 	public static final String PREFS_VIBRATION = "vibration";
-    public static final String PREFS_SOUNDS = "sounds";
+	public static final String PREFS_SOUNDS = "sounds";
 	public static final String PREFS_PATHS = "paths";
 	public static final String PREFS_QUALITY = "hqscale";
 	public static final String PREFS_IMAGE_SIZE = "imageSize";
 	public static final String LAST_IMAGE_TIMESTAMP = "lastImageTimestamp";
-    
+
 	// Default time, in seconds, to set the "last timestamp" if none exists
 	public static final long DEFAULT_DURATION = 1 * 24 * 60 * 60;
 
-    public static final String BASE_URL = "<LifeStream Base URL>";
+	public final String BASE_URL;
+	public final String GCM_ID;
 
 	// Thunk allows us to swap out URLs later if we want me to.
-	static public String GetBaseUrl() {
+	public String GetBaseUrl() {
 		return BASE_URL;
 	}
 
 	// Get a unique ID for this device.
-	static public String GetAndroidID(Context context) {
+	public String GetAndroidID(Context context) {
 		String id = android.provider.Settings.Secure.getString(context.getContentResolver(),
 			android.provider.Settings.Secure.ANDROID_ID);
 		if (id == null || id.equals("")) {
@@ -78,6 +79,9 @@ public class Settings {
 	public Settings(Context context) {
 		_context = context;
 		_settings = _context.getSharedPreferences(PREFS_NAME, 0);
+
+		BASE_URL = context.getString(R.string.base_url);
+		GCM_ID = _context.getString(R.string.gcm_id);
 	}
 
 	public String getUserName() { return _settings.getString(PREFS_USER, ""); }
@@ -135,10 +139,10 @@ public class Settings {
 		_editor.putBoolean(PREFS_VIBRATION, v);
 	}
 
-    public boolean getSoundsEnabled() { return _settings.getBoolean(PREFS_SOUNDS, true); }
-    public void setSoundsEnabled(boolean v) {
-        edit().putBoolean(PREFS_SOUNDS, v);
-    }
+	public boolean getSoundsEnabled() { return _settings.getBoolean(PREFS_SOUNDS, true); }
+	public void setSoundsEnabled(boolean v) {
+		edit().putBoolean(PREFS_SOUNDS, v);
+	}
 
 	// This is stored as a JSON array. WatchedPaths interprets it.
 	public String getPaths() { return _settings.getString(PREFS_PATHS, ""); }
@@ -174,6 +178,6 @@ public class Settings {
 	SharedPreferences.Editor edit() {
 		if (_editor == null)
 			_editor = _settings.edit();
-        return _editor;
+		return _editor;
 	}
 }
