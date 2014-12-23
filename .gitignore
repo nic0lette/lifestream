@@ -2,6 +2,7 @@ bin/
 gen/
 local/
 .idea/
+out/
 LifeStream.iml
 debug.keystore
 .DS_Store

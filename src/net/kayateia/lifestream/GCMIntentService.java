@@ -27,7 +27,6 @@ import com.google.android.gcm.GCMBaseIntentService;
 
 public class GCMIntentService extends GCMBaseIntentService {
 	private static final String LOG_TAG = "LifeStream/GCMIntentService";
-	public final static String GCM_SENDER_ID = "307070596647";
 
 	public GCMIntentService() {
 		// Defined by creating the API key.

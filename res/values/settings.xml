@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<!-- Update with your GCM ID -->
-    <string name="gcm_id">0</string>
+    <string name="gcm_id">307070596647</string>
 
 	<!-- Update with your server URL (with trailing '/' !) -->
-    <string name="base_url">http://your.server.here/path/</string>
+    <string name="base_url">https://fia.isisview.org/lifestream/</string>
 </resources>
